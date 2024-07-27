@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MS-GO</title>
+  <style>
+    html {
+      height: 100%;
+      width: 100%;
+    }
+
+    body {
+      background-color: #212121;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .left {
+      width: 25vw;
+      height: 100vh;
+      background-color: #100f0f;
+      position: fixed;
+      top: 0;
+      left: -25vw;
+      transition: left 0.3s ease;
+      z-index: 2;
+    }
+
+    .left.open {
+      left: 0;
+    }
+
+    .right {
+      width: 75vw;
+      height: 100vh;
+      overflow-y: auto;
+      margin-left: 25vw;
+      transition: margin-left 0.3s ease;
+    }
+
+    .right.full {
+      margin-left: 0;
+      width: 100vw;
+    }
+
+    .border {
+      border: 2px solid #100f0f;
+      margin: 3px;
+      background-color: #100f0f;
+    }
+
+    .flex {
+      display: flex;
+    }
+
+    .justify-center {
+      justify-content: center;
+    }
+
+    .items-center {
+      align-items: center;
+    }
+
+    .left h1 {
+      margin-left: 30px;
+      font-size: 50px;
+      color: #f0b40f;
+    }
+
+    .left li {
+      color: white;
+      margin: 12px;
+      font-size: 22px;
+      list-style: none;
+    }
+
+    .tweetcontainer {
+      border: 6px solid #212121;
+      height: 100vh;
+      margin-top: 7px;
+      padding: 10px;
+    }
+
+    .tweet {
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      background-color: #252222;
+      color: white;
+    }
+
+    .profile-pic {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-right: 10px;
+    }
+
+    .tweet-content {
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+    }
+
+    .button {
+      background-color: #f0b40f;
+      color: #212121;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .button:hover {
+      background-color: #e0a70f;
+    }
+
+    .input {
+      width: calc(100% - 30px);
+      padding: 10px;
+      margin: 5px;
+      font-size: 16px;
+    }
+
+    .like,
+    .dislike {
+      background: none;
+      border: none;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+
+    .like,
+    .dislike {
+      color: white;
+    }
+
+    .liked,
+    .disliked {
+      color: pink;
+    }
+
+    .tweet-actions {
+      display: flex;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .menu-button {
+      background: none;
+      border: none;
+      color: #f0b40f;
+      font-size: 30px;
+      cursor: pointer;
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 3;
+    }
+
+    @media (max-width: 768px) {
+      .left {
+        width: 60vw;
+        left: -60vw;
+      }
+
+      .right {
+        width: 100vw;
+        margin-left: 0;
+      }
+
+      .right.shift {
+        margin-left: 60vw;
+      }
+
+      .right.full {
+        width: 100vw;
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <button class="menu-button" onclick="toggleMenu()">&#9776;</button>
+  <div class="flex">
+    <div class="left border">
+      <h1>MS-GO</h1>
+      <ul>
+        <li>Home</li>
+        <li>Contect</li>
+        <li>Help $ feedback</li>
+        <li>Mails</li>
+        <li>Profile</li>
+        <li>Settings</li>
+      </ul>
+    </div>
+    <div class="right tweetcontainer">
+      <button id="googleSignIn" class="button">Sign in with Google</button>
+      <input type="text" id="Tweet" placeholder="Tweet" class="input">
+      <button id="Submit" class="button">Publish</button>
+      <div id="tweetsContainer"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+    import { getDatabase, ref, push, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBu1RS1rZzrUcZuo6mV6OXWuzWlbw5TqmY",
+      authDomain: "fir-projet-a7a41.firebaseapp.com",
+      databaseURL: "https://fir-projet-a7a41-default-rtdb.firebaseio.com",
+      projectId: "fir-projet-a7a41",
+      storageBucket: "fir-projet-a7a41.appspot.com",
+      messagingSenderId: "787964244055",
+      appId: "1:787964244055:web:83400a1416b80f5f513312",
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    let tweetInput = document.getElementById('Tweet');
+    let submitBtn = document.getElementById('Submit');
+    let googleSignInBtn = document.getElementById('googleSignIn');
+    let tweetsContainer = document.getElementById('tweetsContainer');
+    let user = null;
+
+    // Sign in with Google
+    googleSignInBtn.addEventListener('click', () => {
+      signInWithPopup(auth, provider)
+        .then((result) => {
+          user = result.user;
+          alert("Signed in as " + user.displayName);
+          displayTweets();
+        })
+        .catch((error) => {
+          alert("Failed to sign in: " + error.message);
+        });
+    });
+
+    // On Auth State Changed
+    onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        user = currentUser;
+        displayTweets();
+      } else {
+        user = null;
+        tweetsContainer.innerHTML = "";
+      }
+    });
+
+    // Add Data
+    function addData() {
+      if (user) {
+        const newTweetRef = push(ref(db, 'tweets/'));
+        set(newTweetRef, {
+          username: user.displayName,
+          tweet: tweetInput.value,
+          profilePic: user.photoURL || 'default-profile.png',
+          likes: 0,
+          dislikes: 0
+        })
+          .then(() => {
+            alert("Tweet added successfully");
+            displayTweets();
+          })
+          .catch((error) => {
+            alert("Failed to add tweet: " + error.message);
+          });
+      } else {
+        alert("You must be signed in to post a tweet.");
+      }
+    }
+
+    // Handle Like
+    window.handleLike = function(tweetKey, liked) {
+      const tweetRef = ref(db, 'tweets/' + tweetKey);
+      const updates = {};
+      updates['likes'] = liked ? ++liked : 1;
+      update(tweetRef, updates);
+    }
+
+    // Handle Dislike
+    window.handleDislike = function(tweetKey, disliked) {
+      const tweetRef = ref(db, 'tweets/' + tweetKey);
+      const updates = {};
+      updates['dislikes'] = disliked ? ++disliked : 1;
+      update(tweetRef, updates);
+    }
+
+    // Display Tweets
+    function displayTweets() {
+      const tweetsRef = ref(db, 'tweets/');
+      onValue(tweetsRef, (snapshot) => {
+        tweetsContainer.innerHTML = "";
+        const data = snapshot.val();
+        for (let key in data) {
+          const tweetData = data[key];
+          let tweetElement = document.createElement('div');
+          tweetElement.classList.add('tweet');
+
+          let profilePicElement = document.createElement('img');
+          profilePicElement.classList.add('profile-pic');
+          profilePicElement.src = tweetData.profilePic || 'default-profile.png';
+
+          let tweetContentElement = document.createElement('div');
+          tweetContentElement.classList.add('tweet-content');
+          tweetContentElement.innerHTML = `<strong>${tweetData.username}:</strong> ${tweetData.tweet}`;
+
+          let tweetActionsElement = document.createElement('div');
+          tweetActionsElement.classList.add('tweet-actions');
+          tweetActionsElement.innerHTML = `
+            <button class="like" onclick="handleLike('${key}', ${tweetData.likes})">Like ${tweetData.likes}</button>
+            <button class="dislike" onclick="handleDislike('${key}', ${tweetData.dislikes})">Dislike ${tweetData.dislikes}</button>
+          `;
+
+          tweetElement.appendChild(profilePicElement);
+          tweetElement.appendChild(tweetContentElement);
+          tweetElement.appendChild(tweetActionsElement);
+          tweetsContainer.appendChild(tweetElement);
+        }
+      });
+    }
+
+    // Toggle Menu
+    window.toggleMenu = function() {
+      const left = document.querySelector('.left');
+      const right = document.querySelector('.right');
+      left.classList.toggle('open');
+      right.classList.toggle('shift');
+    }
+
+    // Event Listeners
+    submitBtn.addEventListener('click', addData);
+  </script>
+</body>
+
+</html>
+
